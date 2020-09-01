@@ -15,7 +15,8 @@
 	#include <immintrin.h>
 #endif
 
-#if defined(__ARM_NEON__) || defined(__aarch64__)
+#if defined(__ARM_NEON__) || defined(__aarch64__) || defined(__gptx__)
+
 	#include <arm_neon.h>
 #endif
 
@@ -195,7 +196,8 @@ BENCHMARK(fp16_ieee_to_fp32_value)->RangeMultiplier(2)->Range(1<<10, 64<<20);
 	BENCHMARK(hardware_mm256_cvtph_ps)->RangeMultiplier(2)->Range(1<<10, 64<<20);
 #endif
 
-#if defined(__ARM_NEON_FP) && (__ARM_NEON_FP & 0x2) || defined(__aarch64__)
+#if defined(__ARM_NEON_FP) && (__ARM_NEON_FP & 0x2) || defined(__aarch64__) || defined(__gptx__)
+
 	static void hardware_vcvt_f32_f16(benchmark::State& state) {
 		const uint_fast32_t seed = std::chrono::system_clock::now().time_since_epoch().count();
 		auto rng = std::bind(std::uniform_real_distribution<float>(-1.0f, 1.0f), std::mt19937(seed));
@@ -211,7 +213,8 @@ BENCHMARK(fp16_ieee_to_fp32_value)->RangeMultiplier(2)->Range(1<<10, 64<<20);
 
 			float* output = fp32.data();
 			const size_t n = state.range(0);
-			#if defined(__aarch64__)
+			#if defined(__aarch64__) || defined(__gptx__)
+
 				const unsigned int fpcr = __builtin_aarch64_get_fpcr();
 				/* Disable flush-to-zero (bit 24) and Alternative FP16 format (bit 26) */
 				__builtin_aarch64_set_fpcr(fpcr & 0xF6FFFFFFu);
@@ -227,7 +230,8 @@ BENCHMARK(fp16_ieee_to_fp32_value)->RangeMultiplier(2)->Range(1<<10, 64<<20);
 					vcvt_f32_f16(
 						(float16x4_t) vld1_u16(&input[i])));
 			}
-			#if defined(__aarch64__)
+			#if defined(__aarch64__) || defined(__gptx__)
+
 				__builtin_aarch64_set_fpcr(fpcr);
 			#else
 				__asm__ __volatile__ ("VMSR fpscr, %[fpscr]" :: [fpscr] "r" (fpscr));
